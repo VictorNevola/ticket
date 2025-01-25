@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/VictorNevola/config"
 	"github.com/VictorNevola/internal/domain/company"
 	"github.com/VictorNevola/internal/domain/promotion"
@@ -13,9 +15,11 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	godotenv.Load()
 	app := fiber.New()
 
 	app.Use(requestid.New())
@@ -46,6 +50,7 @@ func main() {
 	// Services
 	companyService := company.NewService(&company.ServiceParams{
 		CompanyRepository: companyRepository,
+		SecretKey:         os.Getenv("SecretKey"),
 	})
 	promotionService := promotion.NewService(&promotion.ServiceParams{
 		PromotionRepository: promotionRepository,

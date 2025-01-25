@@ -30,6 +30,7 @@ func TestCreateCompany(t *testing.T) {
 		assert.NotNil(t, companyCreated)
 		assert.Equal(t, "Company Test", companyCreated.Name)
 		assert.Equal(t, "123456789", companyCreated.TaxID)
+		assert.NotEmpty(t, companyCreated.SecretKey)
 	})
 
 	t.Run("should not create a company with the same tax id", func(t *testing.T) {

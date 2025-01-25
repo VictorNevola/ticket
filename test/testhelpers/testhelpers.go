@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/VictorNevola/config"
+	"github.com/joho/godotenv"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -102,5 +103,11 @@ func ClearAllDataBase(ctx context.Context) {
     `)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func LoadEnv() {
+	if err := godotenv.Load("../../../../.env.test"); err != nil {
+		panic("Erro ao carregar o arquivo .env.test: " + err.Error())
 	}
 }

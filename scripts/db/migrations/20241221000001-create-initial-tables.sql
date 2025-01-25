@@ -3,6 +3,7 @@ CREATE TABLE companies (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     tax_id TEXT NOT NULL UNIQUE,
+    secret_key TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ

@@ -17,6 +17,7 @@ type (
 		ID        *uuid.UUID `bun:"id,pk"`
 		Name      string     `bun:"name"`
 		TaxID     string     `bun:"tax_id,unique"`
+		SecretKey string     `bun:"secret_key,unique"`
 		CreatedAt time.Time  `bun:"created_at"`
 		UpdatedAt time.Time  `bun:"updated_at"`
 		DeletedAt time.Time  `bun:"deleted_at,soft_delete,nullzero"`

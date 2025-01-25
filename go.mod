@@ -14,7 +14,10 @@ require (
 	github.com/uptrace/bun/extra/bundebug v1.2.6
 )
 
-require github.com/go-gorp/gorp/v3 v3.1.0 // indirect
+require (
+	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect

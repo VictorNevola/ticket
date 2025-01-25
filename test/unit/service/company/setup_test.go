@@ -2,6 +2,7 @@ package company_test
 
 import (
 	"context"
+	"os"
 
 	"github.com/VictorNevola/internal/domain/company"
 	"github.com/VictorNevola/internal/infra/adapters/postgresql"
@@ -15,12 +16,14 @@ const (
 )
 
 func testContext() (context.Context, func()) {
+	testhelpers.LoadEnv()
 	ctx := context.TODO()
 	db, dbCleanup, _ := testhelpers.ConnectionToDB(ctx)
 
 	companyRepository := postgresql.NewCompanyRepository(db)
 	companyService := company.NewService(&company.ServiceParams{
 		CompanyRepository: companyRepository,
+		SecretKey:         os.Getenv("SecretKey"),
 	})
 
 	ctx = context.WithValue(ctx, testhelpers.DbKey, db)
