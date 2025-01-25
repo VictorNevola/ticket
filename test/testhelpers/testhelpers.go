@@ -18,6 +18,12 @@ type (
 		*postgres.PostgresContainer
 		ConnectionString string
 	}
+
+	ContextKey string
+)
+
+const (
+	DbKey ContextKey = "db"
 )
 
 func createPostgresContainer(ctx context.Context) (*PostgresContainer, error) {
@@ -81,4 +87,20 @@ func ConnectionToDB(ctx context.Context) (*bun.DB, func(), error) {
 	return db, func() {
 		postgresContainer.Terminate(ctx)
 	}, nil
+}
+
+func ClearAllDataBase(ctx context.Context) {
+	db := ctx.Value(DbKey).(*bun.DB)
+
+	_, err := db.Exec(`
+        TRUNCATE TABLE 
+            users_in_promotions,
+            users,
+            promotions,
+            companies
+        CASCADE
+    `)
+	if err != nil {
+		panic(err)
+	}
 }

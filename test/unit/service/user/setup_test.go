@@ -10,6 +10,10 @@ import (
 	"github.com/uptrace/bun"
 )
 
+const (
+	userServiceKey testhelpers.ContextKey = "userService"
+)
+
 func testContext() (context.Context, func()) {
 	ctx := context.TODO()
 	db, dbCleanup, _ := testhelpers.ConnectionToDB(ctx)
@@ -19,19 +23,14 @@ func testContext() (context.Context, func()) {
 		UserRepository: userRepository,
 	})
 
-	ctx = context.WithValue(ctx, "db", db)
-	ctx = context.WithValue(ctx, "userService", userService)
+	ctx = context.WithValue(ctx, testhelpers.DbKey, db)
+	ctx = context.WithValue(ctx, userServiceKey, userService)
 
 	return ctx, dbCleanup
 }
 
-func clearDatabase(ctx context.Context) {
-	db := ctx.Value("db").(*bun.DB)
-	db.Exec("DELETE FROM users")
-}
-
 func getUser(ctx context.Context) *userEntity.Model {
-	db := ctx.Value("db").(*bun.DB)
+	db := ctx.Value(testhelpers.DbKey).(*bun.DB)
 	userModel := &userEntity.Model{}
 	err := db.NewSelect().Model(userModel).Scan(ctx)
 	if err != nil {

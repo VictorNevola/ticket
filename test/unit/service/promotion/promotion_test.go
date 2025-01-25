@@ -5,6 +5,7 @@ import (
 
 	"github.com/VictorNevola/internal/domain/promotion"
 	promotionEntity "github.com/VictorNevola/internal/pkg/entity/promotion"
+	"github.com/VictorNevola/test/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,14 +15,14 @@ func TestCreatePromotion(t *testing.T) {
 	defer dbCleanup()
 
 	t.Run("should create a promotion successfully", func(t *testing.T) {
-		defer clearDatabase(ctx)
+		defer testhelpers.ClearAllDataBase(ctx)
 
 		company := createInitialData(ctx)
 		// before promotion not exists
 		hasPromotion := getPromotion(ctx)
 		assert.Nil(t, hasPromotion)
 
-		promotionService := ctx.Value("promotionService").(promotion.Service)
+		promotionService := ctx.Value(promotionServiceKey).(promotion.Service)
 		promotionCreated, err := promotionService.CreatePromotion(ctx, &promotionEntity.CreateData{
 			CompanyID:             *company.ID,
 			Name:                  "Promotion Test",

@@ -5,6 +5,7 @@ import (
 
 	"github.com/VictorNevola/internal/domain/company"
 	companyEntity "github.com/VictorNevola/internal/pkg/entity/company"
+	"github.com/VictorNevola/test/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,12 +15,12 @@ func TestCreateCompany(t *testing.T) {
 	defer dbCleanup()
 
 	t.Run("should create a company successfully", func(t *testing.T) {
-		defer clearDatabase(ctx)
+		defer testhelpers.ClearAllDataBase(ctx)
 		// before company not exists
 		hasCompany := getCompany(ctx)
 		assert.Nil(t, hasCompany)
 
-		companyService := ctx.Value("companyService").(company.Service)
+		companyService := ctx.Value(companyServiceKey).(company.Service)
 		companyCreated, err := companyService.CreateCompany(ctx, &companyEntity.CreateData{
 			Name:  "Company Test",
 			TaxID: "123456789",
@@ -32,8 +33,8 @@ func TestCreateCompany(t *testing.T) {
 	})
 
 	t.Run("should not create a company with the same tax id", func(t *testing.T) {
-		defer clearDatabase(ctx)
-		companyService := ctx.Value("companyService").(company.Service)
+		defer testhelpers.ClearAllDataBase(ctx)
+		companyService := ctx.Value(companyServiceKey).(company.Service)
 		companyService.CreateCompany(ctx, &companyEntity.CreateData{
 			Name:  "Company Test",
 			TaxID: "123456789",

@@ -13,6 +13,10 @@ import (
 	"github.com/uptrace/bun"
 )
 
+const (
+	promotionServiceKey testhelpers.ContextKey = "companyService"
+)
+
 func testContext() (context.Context, func()) {
 	ctx := context.TODO()
 	db, dbCleanup, _ := testhelpers.ConnectionToDB(ctx)
@@ -22,22 +26,14 @@ func testContext() (context.Context, func()) {
 		PromotionRepository: promotionRepository,
 	})
 
-	ctx = context.WithValue(ctx, "db", db)
-	ctx = context.WithValue(ctx, "promotionService", promotionService)
+	ctx = context.WithValue(ctx, testhelpers.DbKey, db)
+	ctx = context.WithValue(ctx, promotionServiceKey, promotionService)
 
 	return ctx, dbCleanup
 }
 
-func clearDatabase(ctx context.Context) {
-	db := ctx.Value("db").(*bun.DB)
-	db.NewDelete().Model(&companyEntity.Model{}).Where("1=1").Exec(ctx)
-	db.NewDelete().Model(&promotionEntity.Model{}).Where("1=1").Exec(ctx)
-
-	log.Println("Database cleared")
-}
-
 func createInitialData(ctx context.Context) *companyEntity.Model {
-	db := ctx.Value("db").(*bun.DB)
+	db := ctx.Value(testhelpers.DbKey).(*bun.DB)
 
 	companyUUID := uuid.New()
 	company := &companyEntity.Model{
@@ -55,7 +51,7 @@ func createInitialData(ctx context.Context) *companyEntity.Model {
 }
 
 func getPromotion(ctx context.Context) *promotionEntity.Model {
-	db := ctx.Value("db").(*bun.DB)
+	db := ctx.Value(testhelpers.DbKey).(*bun.DB)
 	promotionModel := &promotionEntity.Model{}
 
 	err := db.NewSelect().Model(promotionModel).Where("1=1").Scan(ctx)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/VictorNevola/internal/domain/user"
 	userEntity "github.com/VictorNevola/internal/pkg/entity/user"
+	"github.com/VictorNevola/test/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -15,13 +16,13 @@ func TestCreateUser(t *testing.T) {
 	defer dbCleanup()
 
 	t.Run("should create a user successfully", func(t *testing.T) {
-		defer clearDatabase(ctx)
+		defer testhelpers.ClearAllDataBase(ctx)
 
 		// before user not exists
 		hasUser := getUser(ctx)
 		assert.Nil(t, hasUser)
 
-		userService := ctx.Value("userService").(user.Service)
+		userService := ctx.Value(userServiceKey).(user.Service)
 		userCreated, err := userService.CreateUser(ctx, &userEntity.CreateData{
 			Username: "user_test",
 			Email:    "test@test.com",
@@ -40,9 +41,9 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("should not create a user with the same email", func(t *testing.T) {
-		defer clearDatabase(ctx)
+		defer testhelpers.ClearAllDataBase(ctx)
 
-		userService := ctx.Value("userService").(user.Service)
+		userService := ctx.Value(userServiceKey).(user.Service)
 		_, err := userService.CreateUser(ctx, &userEntity.CreateData{
 			Username: "user_test1",
 			Email:    "test@test.com",

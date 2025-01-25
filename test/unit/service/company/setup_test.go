@@ -2,13 +2,16 @@ package company_test
 
 import (
 	"context"
-	"log"
 
 	"github.com/VictorNevola/internal/domain/company"
 	"github.com/VictorNevola/internal/infra/adapters/postgresql"
 	companyEntity "github.com/VictorNevola/internal/pkg/entity/company"
 	"github.com/VictorNevola/test/testhelpers"
 	"github.com/uptrace/bun"
+)
+
+const (
+	companyServiceKey testhelpers.ContextKey = "companyService"
 )
 
 func testContext() (context.Context, func()) {
@@ -20,14 +23,14 @@ func testContext() (context.Context, func()) {
 		CompanyRepository: companyRepository,
 	})
 
-	ctx = context.WithValue(ctx, "db", db)
-	ctx = context.WithValue(ctx, "companyService", companyService)
+	ctx = context.WithValue(ctx, testhelpers.DbKey, db)
+	ctx = context.WithValue(ctx, companyServiceKey, companyService)
 
 	return ctx, dbCleanup
 }
 
 func getCompany(ctx context.Context) *companyEntity.Model {
-	db := ctx.Value("db").(*bun.DB)
+	db := ctx.Value(testhelpers.DbKey).(*bun.DB)
 	company := &companyEntity.Model{}
 
 	err := db.NewSelect().Model(company).Scan(ctx)
@@ -36,11 +39,4 @@ func getCompany(ctx context.Context) *companyEntity.Model {
 	}
 
 	return company
-}
-
-func clearDatabase(ctx context.Context) {
-	db := ctx.Value("db").(*bun.DB)
-	db.NewDelete().Model(&companyEntity.Model{}).Where("1=1").Exec(ctx)
-
-	log.Println("Database cleared")
 }
