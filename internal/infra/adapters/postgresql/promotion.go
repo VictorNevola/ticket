@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/VictorNevola/internal/pkg/entity/promotion"
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
@@ -26,4 +27,15 @@ func (r *PromotionRepository) CreatePromotion(ctx context.Context, model *promot
 	}
 
 	return model, err
+}
+
+func (r *PromotionRepository) GetPromotionByID(ctx context.Context, id uuid.UUID) (*promotion.Model, error) {
+	model := promotion.Model{}
+
+	err := r.DB.NewSelect().Model(&model).Where("id = ?", id).Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model, nil
 }

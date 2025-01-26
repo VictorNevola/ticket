@@ -11,18 +11,12 @@ type (
 	Model struct {
 		bun.BaseModel `bun:"vouchers,alias:vouchers"`
 		ID            *uuid.UUID `bun:"id,pk"`
-		VauncherHash  string     `bun:"vauncher_hash,unique,notnull"`
+		VoucherHash   string     `bun:"voucher_hash,unique,notnull"`
+		UserID        *uuid.UUID `bun:"user_id,notnull"`
+		PromotionID   *uuid.UUID `bun:"promotion_id,notnull"`
 		CreatedAt     time.Time  `bun:"created_at"`
-		ConfirmedAt   time.Time  `bun:"confirmed_at"`
+		ExpiresAt     time.Time  `bun:"expires_at"`
+		ConfirmedAt   time.Time  `bun:"confirmed_at,nullzero"`
 		DeletedAt     time.Time  `bun:"deleted_at,soft_delete,nullzero"`
-	}
-
-	ModelVouncherUsage struct {
-		bun.BaseModel `bun:"voucher_usages,alias:voucher_usages"`
-
-		ID          *uuid.UUID `bun:"id,pk"`
-		PromotionID *uuid.UUID `bun:"promotion_id,notnull"`
-		VoucherID   uuid.UUID  `bun:"voucher_id,notnull"`
-		UserID      uuid.UUID  `bun:"user_id,notnull"`
 	}
 )

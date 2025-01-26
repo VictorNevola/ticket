@@ -5,7 +5,7 @@ CREATE TABLE companies (
     tax_id TEXT NOT NULL UNIQUE,
     secret_key TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
     deleted_at TIMESTAMPTZ
 );
 
@@ -50,26 +50,20 @@ CREATE INDEX idx_users_in_promotions_promotion_id ON users_in_promotions(promoti
 CREATE TABLE vouchers (
     id UUID PRIMARY KEY,
     voucher_hash TEXT NOT NULL UNIQUE,
+    user_id UUID NOT NULL REFERENCES users(id),
+    promotion_id UUID NOT NULL REFERENCES promotions(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
     confirmed_at TIMESTAMPTZ,
     deleted_at TIMESTAMPTZ
 );
 
-CREATE TABLE voucher_usages (
-    id UUID PRIMARY KEY,
-    promotion_id UUID NOT NULL REFERENCES promotions(id),
-    voucher_id UUID NOT NULL REFERENCES vouchers(id),
-    user_id UUID NOT NULL REFERENCES users(id)
-);
-
-CREATE INDEX idx_voucher_usages_promotion_id ON voucher_usages(promotion_id);
-CREATE INDEX idx_voucher_usages_voucher_id ON voucher_usages(voucher_id);
-CREATE INDEX idx_voucher_usages_user_id ON voucher_usages(user_id);
+CREATE INDEX idx_vouchers_user_id ON vouchers(user_id);
+CREATE INDEX idx_vouchers_promotion_id ON vouchers(promotion_id);
 
 -- +migrate Down
 DROP TABLE companies;
 DROP TABLE promotions;
 DROP TABLE users_in_promotions;
 DROP TABLE users;
-DROP TABLE voucher_usages;
 DROP TABLE vouchers;

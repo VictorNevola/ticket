@@ -98,7 +98,8 @@ func ClearAllDataBase(ctx context.Context) {
             users_in_promotions,
             users,
             promotions,
-            companies
+            companies,
+            vouchers
         CASCADE
     `)
 	if err != nil {

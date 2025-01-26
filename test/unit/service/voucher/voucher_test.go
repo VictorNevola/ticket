@@ -1,25 +1,22 @@
-package userinpromotion_test
+package voucher_test
 
 import (
 	"context"
 	"log"
 	"time"
 
-	userinpromotion "github.com/VictorNevola/internal/domain/userInPromotion"
+	"github.com/VictorNevola/internal/domain/voucher"
 	"github.com/VictorNevola/internal/infra/adapters/postgresql"
 	companyEntity "github.com/VictorNevola/internal/pkg/entity/company"
 	promotionEntity "github.com/VictorNevola/internal/pkg/entity/promotion"
 	userEntity "github.com/VictorNevola/internal/pkg/entity/user"
-	userInPromotionEntity "github.com/VictorNevola/internal/pkg/entity/userInPromotion"
-	voucherEntity "github.com/VictorNevola/internal/pkg/entity/voucher"
-	customuuid "github.com/VictorNevola/internal/pkg/utils/custom-UUID"
 	"github.com/VictorNevola/test/testhelpers"
 	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
 const (
-	userInPromotionServiceKey testhelpers.ContextKey = "userInPromotionService"
+	voucherServiceKey testhelpers.ContextKey = "voucherService"
 )
 
 func testContext() (context.Context, func()) {
@@ -27,19 +24,20 @@ func testContext() (context.Context, func()) {
 	db, dbCleanup, _ := testhelpers.ConnectionToDB(ctx)
 
 	//repositories
-	userInPromotionRepository := postgresql.NewUserInPromotionRepository(db)
-	promotionRepository := postgresql.NewPromotionRepository(db)
 	voucherRepository := postgresql.NewVoucherRepo(db)
+	promotionRepository := postgresql.NewPromotionRepository(db)
+	userInPromotionRepository := postgresql.NewUserInPromotionRepository(db)
 
 	//services
-	userInPromotionService := userinpromotion.NewService(&userinpromotion.ServiceParams{
-		UserInPromotionRepository: userInPromotionRepository,
-		PromotionRepository:       promotionRepository,
+	voucherService := voucher.NewService(voucher.ServiceParams{
 		VoucherRepository:         voucherRepository,
+		PromotionRepository:       promotionRepository,
+		UserInPromotionRepository: userInPromotionRepository,
+		SecretKey:                 "secret",
 	})
 
 	ctx = context.WithValue(ctx, testhelpers.DbKey, db)
-	ctx = context.WithValue(ctx, userInPromotionServiceKey, userInPromotionService)
+	ctx = context.WithValue(ctx, voucherServiceKey, voucherService)
 
 	return ctx, dbCleanup
 }
@@ -93,37 +91,4 @@ func createInitialData(
 	}
 
 	return user, promotion
-}
-
-func createVoucher(
-	ctx context.Context,
-	userID uuid.UUID,
-	promotionID uuid.UUID,
-	confirmedAt *time.Time,
-) {
-	db := ctx.Value(testhelpers.DbKey).(*bun.DB)
-
-	VoucherUUID := uuid.New()
-	randomHash := customuuid.GenerateV6()
-
-	_, err := db.NewInsert().Model(&voucherEntity.Model{
-		ID:          &VoucherUUID,
-		VoucherHash: randomHash.String(),
-		UserID:      &userID,
-		PromotionID: &promotionID,
-		ConfirmedAt: *confirmedAt,
-	}).Exec(ctx)
-	if err != nil {
-		log.Println("Error creating initial voucher data", err)
-	}
-}
-
-func getUserInPromotionByUserID(ctx context.Context, userID uuid.UUID) *userInPromotionEntity.Model {
-	db := ctx.Value(testhelpers.DbKey).(*bun.DB)
-	userInPromotionModel := &userInPromotionEntity.Model{}
-	err := db.NewSelect().Model(userInPromotionModel).Where("user_id = ?", userID).Scan(ctx)
-	if err != nil {
-		return nil
-	}
-	return userInPromotionModel
 }

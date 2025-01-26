@@ -8,6 +8,7 @@ import (
 	"github.com/VictorNevola/internal/domain/promotion"
 	"github.com/VictorNevola/internal/domain/user"
 	userinpromotion "github.com/VictorNevola/internal/domain/userInPromotion"
+	"github.com/VictorNevola/internal/domain/voucher"
 	"github.com/VictorNevola/internal/infra/adapters/postgresql"
 	customvalidator "github.com/VictorNevola/internal/pkg/utils/custom-validator"
 	"github.com/gofiber/fiber/v2"
@@ -15,11 +16,10 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	godotenv.Load()
+	config.LoadDotEnv()
 	app := fiber.New()
 
 	app.Use(requestid.New())
@@ -46,7 +46,7 @@ func main() {
 	promotionRepository := postgresql.NewPromotionRepository(db)
 	userRepository := postgresql.NewUserRepository(db)
 	userInPromotionRepository := postgresql.NewUserInPromotionRepository(db)
-
+	voucherRepository := postgresql.NewVoucherRepo(db)
 	// Services
 	companyService := company.NewService(&company.ServiceParams{
 		CompanyRepository: companyRepository,
@@ -60,6 +60,14 @@ func main() {
 	})
 	userInPromotionService := userinpromotion.NewService(&userinpromotion.ServiceParams{
 		UserInPromotionRepository: userInPromotionRepository,
+		VoucherRepository:         voucherRepository,
+		PromotionRepository:       promotionRepository,
+	})
+	voucherService := voucher.NewService(voucher.ServiceParams{
+		VoucherRepository:         voucherRepository,
+		PromotionRepository:       promotionRepository,
+		UserInPromotionRepository: userInPromotionRepository,
+		SecretKey:                 os.Getenv("SecretKey"),
 	})
 
 	// Routers
@@ -81,6 +89,11 @@ func main() {
 	userinpromotion.NewHTTPHandler(&userinpromotion.HttpHandlerParams{
 		App:       app,
 		Service:   userInPromotionService,
+		Validator: validator,
+	})
+	voucher.NewHTTPHandler(&voucher.HttpHandlerParams{
+		App:       app,
+		Service:   voucherService,
 		Validator: validator,
 	})
 

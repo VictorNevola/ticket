@@ -6,18 +6,17 @@ require (
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/google/uuid v1.6.0
+	github.com/joho/godotenv v1.5.1
 	github.com/paemuri/brdoc v1.1.2
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.34.0
 	github.com/uptrace/bun v1.2.6
 	github.com/uptrace/bun/dialect/pgdialect v1.2.6
 	github.com/uptrace/bun/driver/pgdriver v1.2.6
 	github.com/uptrace/bun/extra/bundebug v1.2.6
+	golang.org/x/sync v0.10.0
 )
 
-require (
-	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
-)
+require github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
