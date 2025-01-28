@@ -1,94 +1,89 @@
 package voucher_test
 
 import (
-	"context"
-	"log"
+	"testing"
 	"time"
 
 	"github.com/VictorNevola/internal/domain/voucher"
-	"github.com/VictorNevola/internal/infra/adapters/postgresql"
-	companyEntity "github.com/VictorNevola/internal/pkg/entity/company"
-	promotionEntity "github.com/VictorNevola/internal/pkg/entity/promotion"
-	userEntity "github.com/VictorNevola/internal/pkg/entity/user"
+	voucherEntity "github.com/VictorNevola/internal/pkg/entity/voucher"
+	time_location "github.com/VictorNevola/internal/pkg/utils/time-location"
 	"github.com/VictorNevola/test/testhelpers"
-	"github.com/google/uuid"
-	"github.com/uptrace/bun"
+	"github.com/stretchr/testify/assert"
 )
 
-const (
-	voucherServiceKey testhelpers.ContextKey = "voucherService"
-)
+func TestGenerateVoucher(t *testing.T) {
+	t.Parallel()
+	ctx, dbCleanup := testContext()
+	defer dbCleanup()
 
-func testContext() (context.Context, func()) {
-	ctx := context.TODO()
-	db, dbCleanup, _ := testhelpers.ConnectionToDB(ctx)
+	t.Run("should generate a voucher successfully", func(t *testing.T) {
+		defer testhelpers.ClearAllDataBase(ctx)
 
-	//repositories
-	voucherRepository := postgresql.NewVoucherRepo(db)
-	promotionRepository := postgresql.NewPromotionRepository(db)
-	userInPromotionRepository := postgresql.NewUserInPromotionRepository(db)
+		user, promotion := createInitialData(
+			ctx,
+			time_location.Now().Add(time.Hour*24), // promotion end date is 24 hours from now,
+			10,                                    // promotion qty max users is 10
+		)
+		createUserInPromotion(ctx, user, promotion)
 
-	//services
-	voucherService := voucher.NewService(voucher.ServiceParams{
-		VoucherRepository:         voucherRepository,
-		PromotionRepository:       promotionRepository,
-		UserInPromotionRepository: userInPromotionRepository,
-		SecretKey:                 "secret",
+		voucherService := ctx.Value(voucherServiceKey).(voucher.Service)
+		createdVoucher, err := voucherService.GenerateVoucher(ctx, voucherEntity.CreateVoucherDataBody{
+			PromotionID: *promotion.ID,
+		}, *user.ID)
+
+		assert.Nil(t, err)
+		assert.NotNil(t, createdVoucher)
+		assert.Equal(t, *promotion.ID, *createdVoucher.PromotionID)
+		assert.Equal(t, *user.ID, *createdVoucher.UserID)
+		assert.NotEmpty(t, createdVoucher.VoucherHash)
+		assert.Len(t, createdVoucher.VoucherHash, 120)
+		assert.Equal(t,
+			createdVoucher.ExpiresAt.Format("2006-01-02 15:04:05"),
+			time_location.Now().Add(time.Hour).Format("2006-01-02 15:04:05"),
+		)
 	})
 
-	ctx = context.WithValue(ctx, testhelpers.DbKey, db)
-	ctx = context.WithValue(ctx, voucherServiceKey, voucherService)
+	t.Run("should return error if the promotion is not active", func(t *testing.T) {
+		defer testhelpers.ClearAllDataBase(ctx)
 
-	return ctx, dbCleanup
-}
+		user, promotion := createInitialData(ctx, time_location.Now().Add(-time.Hour*24), 10)
+		createUserInPromotion(ctx, user, promotion)
+		voucherService := ctx.Value(voucherServiceKey).(voucher.Service)
+		_, err := voucherService.GenerateVoucher(ctx, voucherEntity.CreateVoucherDataBody{
+			PromotionID: *promotion.ID,
+		}, *user.ID)
 
-func createInitialData(
-	ctx context.Context,
-	promotionEndDate time.Time,
-	promotionQtyMaxUsers int,
-) (*userEntity.Model, *promotionEntity.Model) {
-	db := ctx.Value(testhelpers.DbKey).(*bun.DB)
+		assert.NotNil(t, err)
+		assert.EqualValues(t, err, voucher.ErrPromotionIsNotActive)
+	})
 
-	companyUUID := uuid.New()
-	company := &companyEntity.Model{
-		ID:    &companyUUID,
-		Name:  "Company Test",
-		TaxID: "123456789",
-	}
+	t.Run("should return error if the promotion has no available quantity of vouchers", func(t *testing.T) {
+		defer testhelpers.ClearAllDataBase(ctx)
 
-	_, err := db.NewInsert().Model(company).Exec(ctx)
-	if err != nil {
-		log.Println("Error creating initial company data", err)
-	}
+		user, promotion := createInitialData(ctx, time_location.Now().Add(time.Hour*24), 1)
+		createUserInPromotion(ctx, user, promotion)
+		createVoucher(ctx, promotion, user) // create 1 voucher for the promotion, so the promotion has no available quantity of vouchers
 
-	promotionUUID := uuid.New()
-	promotion := &promotionEntity.Model{
-		ID:                    &promotionUUID,
-		CompanyID:             company.ID,
-		Name:                  "Promotion Test",
-		TextMessageInProgress: "Test",
-		TextMessageSuccess:    "Test",
-		StartDate:             time.Now(),
-		EndDate:               promotionEndDate,
-		QtyMaxUsers:           promotionQtyMaxUsers,
-		VouchersPerUser:       1,
-	}
-	_, err = db.NewInsert().Model(promotion).Exec(ctx)
-	if err != nil {
-		log.Println("Error creating initial promotion data", err)
-	}
+		voucherService := ctx.Value(voucherServiceKey).(voucher.Service)
+		_, err := voucherService.GenerateVoucher(ctx, voucherEntity.CreateVoucherDataBody{
+			PromotionID: *promotion.ID,
+		}, *user.ID)
 
-	userUUID := uuid.New()
-	user := &userEntity.Model{
-		ID:       &userUUID,
-		Email:    "test@test.com",
-		Username: "test",
-	}
+		assert.NotNil(t, err)
+		assert.EqualValues(t, err, voucher.ErrPromotionHasNoAvailableQuantityOfVouchers)
+	})
 
-	_, err = db.NewInsert().Model(user).Exec(ctx)
-	if err != nil {
-		log.Println("Error creating initial user data", err)
-	}
+	t.Run("should return error if the user is not in the promotion", func(t *testing.T) {
+		defer testhelpers.ClearAllDataBase(ctx)
 
-	return user, promotion
+		user, promotion := createInitialData(ctx, time_location.Now().Add(time.Hour*24), 10)
+
+		voucherService := ctx.Value(voucherServiceKey).(voucher.Service)
+		_, err := voucherService.GenerateVoucher(ctx, voucherEntity.CreateVoucherDataBody{
+			PromotionID: *promotion.ID,
+		}, *user.ID)
+
+		assert.NotNil(t, err)
+		assert.EqualValues(t, err, voucher.ErrUserNotInPromotion)
+	})
 }

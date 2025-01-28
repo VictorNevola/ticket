@@ -41,10 +41,14 @@ func (h *httpHandler) GenerateVoucher(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(common.NewValidationErrorResponse(err))
 	}
 
-	err := h.service.GenerateVoucher(c.Context(), data, uuid.MustParse("01efc3d8-c008-61c5-9aa2-00155d4d9af9"))
+	voucher, err := h.service.GenerateVoucher(
+		c.Context(),
+		data,
+		uuid.MustParse("01efc3d8-c008-61c5-9aa2-00155d4d9af9"),
+	)
 	if err != nil {
 		return err
 	}
 
-	return c.SendStatus(fiber.StatusCreated)
+	return c.Status(fiber.StatusCreated).JSON(voucher)
 }

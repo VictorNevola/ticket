@@ -2,6 +2,7 @@ package voucher
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -21,7 +22,7 @@ type (
 			ctx context.Context,
 			data voucherEntity.CreateVoucherDataBody,
 			userID uuid.UUID,
-		) error
+		) (*voucherEntity.Model, error)
 	}
 
 	ServiceParams struct {
@@ -52,7 +53,7 @@ func (s *service) GenerateVoucher(
 	ctx context.Context,
 	data voucherEntity.CreateVoucherDataBody,
 	userID uuid.UUID,
-) error {
+) (*voucherEntity.Model, error) {
 	var (
 		promotionDetails *promotionEntity.Model
 		userInPromotion  *userinpromotionEntity.Model
@@ -75,7 +76,7 @@ func (s *service) GenerateVoucher(
 			userID,
 			data.PromotionID,
 		)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			return err
 		}
 		userInPromotion = userInPromotionDB
@@ -85,7 +86,7 @@ func (s *service) GenerateVoucher(
 	errorGroup.Go(func() error {
 		vouchers, err := s.voucherRepository.GetAllVouchersByFilters(ctx, repo.GetAllVouchersByFilters{
 			PromotionID:      &data.PromotionID,
-			ConfirmedAtIsNil: true,
+			ConfirmedAtIsNil: false,
 		})
 		if err != nil {
 			return err
@@ -95,26 +96,31 @@ func (s *service) GenerateVoucher(
 	})
 
 	if err := errorGroup.Wait(); err != nil {
-		return err
+		return nil, err
 	}
 
 	// check if campaing already is active
 	if promotionDetails.EndDate.Before(time_location.Now()) {
-		return ErrPromotionIsNotActive
+		return nil, ErrPromotionIsNotActive
 	}
 
 	// check if the promotion has available quantity of vouchers
 	qtyMaxOfVouchersToPromotion := promotionDetails.QtyMaxUsers * promotionDetails.VouchersPerUser
 	if len(vouchersUsage) >= qtyMaxOfVouchersToPromotion {
-		return ErrPromotionHasNoAvailableQuantityOfVouchers
+		return nil, ErrPromotionHasNoAvailableQuantityOfVouchers
 	}
 
 	// check if the user is in the promotion
 	if userInPromotion == nil {
-		return ErrUserNotInPromotion
+		return nil, ErrUserNotInPromotion
 	}
 
-	return s.saveNewVoucherToUser(ctx, *promotionDetails.CompanyID, userID, data.PromotionID)
+	return s.saveNewVoucherToUser(
+		ctx,
+		*promotionDetails.CompanyID,
+		userID,
+		data.PromotionID,
+	)
 }
 
 func (s *service) saveNewVoucherToUser(
@@ -122,15 +128,15 @@ func (s *service) saveNewVoucherToUser(
 	companyID uuid.UUID,
 	userID uuid.UUID,
 	promotionID uuid.UUID,
-) error {
+) (*voucherEntity.Model, error) {
 	voucherID := uuid.New()
 	voucher := fmt.Sprintf("%s-%s", companyID.String(), voucherID.String())
 	voucherHash, err := crypto.Encrypt(voucher, s.secretKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = s.voucherRepository.CreateVoucher(ctx, &voucherEntity.Model{
+	return s.voucherRepository.CreateVoucher(ctx, &voucherEntity.Model{
 		ID:          &voucherID,
 		UserID:      &userID,
 		PromotionID: &promotionID,
@@ -138,9 +144,4 @@ func (s *service) saveNewVoucherToUser(
 		CreatedAt:   time.Now(),
 		ExpiresAt:   time.Now().Add(time.Hour), // expires at 1 hour
 	})
-	if err != nil {
-		return err
-	}
-
-	return err
 }
